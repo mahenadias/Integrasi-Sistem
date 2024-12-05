@@ -1,3 +1,4 @@
+import csv
 import json
 import os
 
@@ -29,6 +30,43 @@ def save_bobot(bobot):
     with open(BOBOT_FILE, "w") as file:
         json.dump(bobot, file)
 
+# Fungsi untuk menyimpan nilai mahasiswa ke CSV
+def simpan_nilai_csv(id_mahasiswa, nilai_tugas, nilai_proyek):
+    # Tentukan nama file CSV
+    file_csv = "nilai_mahasiswa.csv"
+    
+    # Periksa apakah file CSV sudah ada
+    file_exists = os.path.exists(file_csv)
+    
+    # Buka file CSV dalam mode append
+    with open(file_csv, mode="a", newline="") as file:
+        writer = csv.writer(file)
+        
+        # Jika file baru, tulis header
+        if not file_exists:
+            writer.writerow(["ID Mahasiswa", "Nilai Tugas", "Nilai Proyek"])
+        
+        # Tulis data nilai mahasiswa
+        writer.writerow([id_mahasiswa, nilai_tugas, nilai_proyek])
+
+# Fungsi untuk memuat data dari CSV
+def load_data_from_csv():
+    file_csv = "nilai_mahasiswa.csv"
+    
+    # Periksa apakah file CSV ada
+    if os.path.exists(file_csv):
+        # Membaca data dari CSV dan mengembalikan sebagai list of dictionaries
+        data = []
+        with open(file_csv, mode="r") as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                # Konversi nilai ke tipe yang sesuai
+                row["Nilai Tugas"] = float(row["Nilai Tugas"])
+                row["Nilai Proyek"] = float(row["Nilai Proyek"])
+                data.append(row)
+        return data
+    else:
+        return []
 
 # Dummy function untuk MongoDB dan SAW
 def ambil_data_dari_mongodb(start_time, end_time):
@@ -136,89 +174,82 @@ def admin_page():
                 st.session_state.data_mahasiswa[id_mahasiswa] = mahasiswa
             st.success(f"Nilai untuk {id_mahasiswa} berhasil disimpan!")
 
-    elif menu == "Hasil SPK":
+    if menu == "Hasil SPK":
         st.title("Hasil SPK Mahasiswa")
-        if "data_mahasiswa" in st.session_state:
-            data_mahasiswa = list(st.session_state.data_mahasiswa.values())
-        else:
-            data_mahasiswa = []
+    
+    # Memuat data dari CSV
+    data_mahasiswa = load_data_from_csv()
+    
+    if not data_mahasiswa:
+        st.warning("Belum ada data mahasiswa untuk dihitung.")
+    else:
+        bobot_kriteria = st.session_state.get(
+            "bobot_kriteria",
+            {
+                "kehadiran": 15,
+                "waktu_produktif": 15,
+                "nilai_tugas": 30,
+                "nilai_proyek": 40,
+            },
+        )
 
-        if not data_mahasiswa:
-            st.warning("Belum ada data mahasiswa untuk dihitung.")
-        else:
-            # Ambil bobot dari session_state atau default
-            bobot_kriteria = st.session_state.get(
-                "bobot_kriteria",
-                {
-                    "kehadiran": 15,
-                    "waktu_produktif": 15,
-                    "nilai_tugas": 30,
-                    "nilai_proyek": 40,
-                },
-            )
+        # Fungsi untuk menghitung SAW dengan bobot dinamis
+        def hitung_saw_dengan_bobot(data, bobot):
+            hasil = []
+            for row in data:
+                kehadiran = row["kehadiran"] or 0
+                waktu_produktif = row["waktu_produktif"] or 0
+                nilai_tugas = row["Nilai Tugas"] or 0
+                nilai_proyek = row["Nilai Proyek"] or 0
 
-            # Fungsi untuk menghitung SAW dengan bobot dinamis
-            def hitung_saw_dengan_bobot(data, bobot):
-                hasil = []
-                for row in data:
-                    kehadiran = row["kehadiran"] or 0
-                    waktu_produktif = row["waktu_produktif"] or 0
-                    nilai_tugas = row["nilai_tugas"] or 0
-                    nilai_proyek = row["nilai_proyek"] or 0
+                hasil_saw = (
+                    kehadiran * bobot["kehadiran"] / 100
+                    + waktu_produktif * bobot["waktu_produktif"] / 100
+                    + nilai_tugas * bobot["nilai_tugas"] / 100
+                    + nilai_proyek * bobot["nilai_proyek"] / 100
+                )
+                hasil.append({"id": row["ID Mahasiswa"], "hasil_saw": hasil_saw})
+            return hasil
 
-                    hasil_saw = (
-                        kehadiran * bobot["kehadiran"] / 100
-                        + waktu_produktif * bobot["waktu_produktif"] / 100
-                        + nilai_tugas * bobot["nilai_tugas"] / 100
-                        + nilai_proyek * bobot["nilai_proyek"] / 100
-                    )
-                    hasil.append({"id": row["id"], "hasil_saw": hasil_saw})
-                return hasil
+        hasil_saw = hitung_saw_dengan_bobot(data_mahasiswa, bobot_kriteria)
+        hasil_saw = sorted(hasil_saw, key=lambda x: x["hasil_saw"], reverse=False)
+        df = pd.DataFrame(hasil_saw)
+        df = df.sort_values(by="hasil_saw", ascending=True)
+        df["rank"] = range(1, len(df) + 1)
 
-            hasil_saw = hitung_saw_dengan_bobot(data_mahasiswa, bobot_kriteria)
-            hasil_saw = sorted(hasil_saw, key=lambda x: x["hasil_saw"], reverse=False)
-            df = pd.DataFrame(hasil_saw)
-            df = df.sort_values(by="hasil_saw", ascending=True)
-            df["rank"] = range(1, len(df) + 1)
+        fig = px.bar(
+            df,
+            x="hasil_saw",
+            y="rank",
+            orientation="h",
+            title="Peringkat Mahasiswa Berdasarkan Hasil SPK",
+            text="id",
+        )
 
-            fig = px.bar(
-                df,
-                x="hasil_saw",
-                y="rank",
-                orientation="h",
-                title="Peringkat Mahasiswa Berdasarkan Hasil SPK",
-                text="id",
-            )
+        fig.add_scatter(
+            x=df["hasil_saw"],
+            y=df["rank"],
+            mode="text",
+            text=df["hasil_saw"].apply(lambda x: f"{x:.2f}"),
+            textposition="middle right",
+            showlegend=False,
+        )
 
-            fig.update_traces(
-                texttemplate="%{text}",
-                textposition="inside",
-                marker=dict(color="royalblue"),
-            )
+        fig.update_layout(
+            xaxis_title="Hasil SPK (%)",
+            yaxis_title="Rank",
+            yaxis=dict(
+                tickmode="array",
+                tickvals=df["rank"],
+                ticktext=df["rank"].sort_values(ascending=False).astype(str),
+            ),
+            showlegend=False,
+        )
 
-            fig.add_scatter(
-                x=df["hasil_saw"],
-                y=df["rank"],
-                mode="text",  # Mode teks
-                text=df["hasil_saw"].apply(lambda x: f"{x:.2f}"),  # Format hasil SAW
-                textposition="middle right",  # Menempatkan teks di sebelah kanan bar
-                showlegend=False,
-            )
+        st.plotly_chart(fig)
 
-            fig.update_layout(
-                xaxis_title="Hasil SPK (%)",
-                yaxis_title="Rank",
-                yaxis=dict(
-                    tickmode="array",
-                    tickvals=df["rank"],
-                    ticktext=df["rank"].sort_values(ascending=False).astype(str),
-                ),
-                showlegend=False,
-            )
 
-            st.plotly_chart(fig)
-
-    elif menu == "Pengaturan":
+    if menu == "Pengaturan":
         st.title("Pengaturan")
         if "bobot_kriteria" not in st.session_state:
             st.session_state.bobot_kriteria = load_bobot()
@@ -337,97 +368,91 @@ def dosen_page():
                     "nilai_proyek": nilai_proyek,
                 }
                 st.session_state.data_mahasiswa[id_mahasiswa] = mahasiswa
+                # Simpan nilai ke CSV
+                simpan_nilai_csv(id_mahasiswa, nilai_tugas, nilai_proyek)
             else:
                 mahasiswa["nilai_tugas"] = nilai_tugas
                 mahasiswa["nilai_proyek"] = nilai_proyek
                 st.session_state.data_mahasiswa[id_mahasiswa] = mahasiswa
-            st.success(f"Nilai untuk {id_mahasiswa} berhasil disimpan!")
-
-    elif menu == "Hasil SPK":
+                # Simpan nilai ke CSV
+                simpan_nilai_csv(id_mahasiswa, nilai_tugas, nilai_proyek)
+            st.success(f"Nilai untuk {id_mahasiswa} berhasil disimpan!")                        
+            
+    if menu == "Hasil SPK":
         st.title("Hasil SPK Mahasiswa")
-        if "data_mahasiswa" in st.session_state:
-            data_mahasiswa = list(st.session_state.data_mahasiswa.values())
-        else:
-            data_mahasiswa = []
+    
+        # Memuat data dari CSV
+        data_mahasiswa = load_data_from_csv()
+    
+    if not data_mahasiswa:
+        st.warning("Belum ada data mahasiswa untuk dihitung.")
+    else:
+        bobot_kriteria = st.session_state.get(
+            "bobot_kriteria",
+            {
+                "kehadiran": 15,
+                "waktu_produktif": 15,
+                "nilai_tugas": 30,
+                "nilai_proyek": 40,
+            },
+        )
 
-        if not data_mahasiswa:
-            st.warning("Belum ada data mahasiswa untuk dihitung.")
-        else:
-            # Ambil bobot dari session_state atau default
-            bobot_kriteria = st.session_state.get(
-                "bobot_kriteria",
-                {
-                    "kehadiran": 15,
-                    "waktu_produktif": 15,
-                    "nilai_tugas": 30,
-                    "nilai_proyek": 40,
-                },
-            )
+        # Fungsi untuk menghitung SAW dengan bobot dinamis
+        def hitung_saw_dengan_bobot(data, bobot):
+            hasil = []
+            for row in data:
+                kehadiran = row["kehadiran"] or 0
+                waktu_produktif = row["waktu_produktif"] or 0
+                nilai_tugas = row["Nilai Tugas"] or 0
+                nilai_proyek = row["Nilai Proyek"] or 0
 
-            # Fungsi untuk menghitung SAW dengan bobot dinamis
-            def hitung_saw_dengan_bobot(data, bobot):
-                hasil = []
-                for row in data:
-                    kehadiran = row["kehadiran"] or 0
-                    waktu_produktif = row["waktu_produktif"] or 0
-                    nilai_tugas = row["nilai_tugas"] or 0
-                    nilai_proyek = row["nilai_proyek"] or 0
+                hasil_saw = (
+                    kehadiran * bobot["kehadiran"] / 100
+                    + waktu_produktif * bobot["waktu_produktif"] / 100
+                    + nilai_tugas * bobot["nilai_tugas"] / 100
+                    + nilai_proyek * bobot["nilai_proyek"] / 100
+                )
+                hasil.append({"id": row["ID Mahasiswa"], "hasil_saw": hasil_saw})
+            return hasil
 
-                    hasil_saw = (
-                        kehadiran * bobot["kehadiran"] / 100
-                        + waktu_produktif * bobot["waktu_produktif"] / 100
-                        + nilai_tugas * bobot["nilai_tugas"] / 100
-                        + nilai_proyek * bobot["nilai_proyek"] / 100
-                    )
-                    hasil.append({"id": row["id"], "hasil_saw": hasil_saw})
-                return hasil
+        hasil_saw = hitung_saw_dengan_bobot(data_mahasiswa, bobot_kriteria)
+        hasil_saw = sorted(hasil_saw, key=lambda x: x["hasil_saw"], reverse=False)
+        df = pd.DataFrame(hasil_saw)
+        df = df.sort_values(by="hasil_saw", ascending=True)
+        df["rank"] = range(1, len(df) + 1)
 
-            hasil_saw = hitung_saw_dengan_bobot(data_mahasiswa, bobot_kriteria)
-            hasil_saw = sorted(hasil_saw, key=lambda x: x["hasil_saw"], reverse=False)
-            df = pd.DataFrame(hasil_saw)
-            df = df.sort_values(by="hasil_saw", ascending=True)
-            df["rank"] = range(1, len(df) + 1)
+        fig = px.bar(
+            df,
+            x="hasil_saw",
+            y="rank",
+            orientation="h",
+            title="Peringkat Mahasiswa Berdasarkan Hasil SPK",
+            text="id",
+        )
 
-            fig = px.bar(
-                df,
-                x="hasil_saw",
-                y="rank",
-                orientation="h",
-                title="Peringkat Mahasiswa Berdasarkan Hasil SPK",
-                text="id",
-            )
+        fig.add_scatter(
+            x=df["hasil_saw"],
+            y=df["rank"],
+            mode="text",
+            text=df["hasil_saw"].apply(lambda x: f"{x:.2f}"),
+            textposition="middle right",
+            showlegend=False,
+        )
 
-            fig.add_scatter(
-                x=df["hasil_saw"],
-                y=["rank"],
-                mode="text",
-                text=df["hasil_saw"].apply(lambda x: f"{x:.2f}"),
-                textposition="middle right",
-                showlegend=False,
-                textfont=dict(weight="bold"),
-            )
+        fig.update_layout(
+            xaxis_title="Hasil SPK (%)",
+            yaxis_title="Rank",
+            yaxis=dict(
+                tickmode="array",
+                tickvals=df["rank"],
+                ticktext=df["rank"].sort_values(ascending=False).astype(str),
+            ),
+            showlegend=False,
+        )
 
-            fig.update_traces(
-                texttemplate="%{text}",
-                # textposition="inside",
-                marker=dict(color="royalblue"),
-            )
+        st.plotly_chart(fig)
 
-            fig.update_layout(
-                xaxis_title="Hasil SPK (%)",
-                yaxis_title=None,
-                yaxis=dict(
-                    tickmode="array",
-                    tickvals=df["rank"],
-                    ticktext=df["rank"].astype(str),
-                    categoryorder="total ascending",
-                ),
-                showlegend=False,
-            )
-
-            st.plotly_chart(fig)
-
-    elif menu == "Logout":
+    if menu == "Logout":
         st.session_state.clear()
         st.write("Anda telah logout.")
         st.rerun()
