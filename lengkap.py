@@ -196,7 +196,7 @@ def admin_page():
         st.write("Selamat datang di halaman admin.")
     elif menu == "Live CCTV":
         st.title("Live CCTV")
-        cctv_url = "http://10.10.118.213:8081/"
+        cctv_url = "https://lit-elements-head-bosnia.trycloudflare.com"
         st.write(f"Tonton CCTV di [klik di sini]({cctv_url}) jika tidak muncul.")
         st.components.v1.html(
             f"""
