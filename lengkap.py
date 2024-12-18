@@ -249,8 +249,10 @@ def admin_page():
             # Query data berdasarkan nama meja
             data_mahasiswa = collection.find_one(
             {nama_meja: {"$exists": True}},
-            sort=[("_id", -1)]  # Sorting berdasarkan _id untuk mendapatkan data terakhir
-        )
+                sort=[
+                    ("_id", -1)
+                ],  # Sorting berdasarkan _id untuk mendapatkan data terakhir
+            )
 
             if data_mahasiswa:
                 # Ambil waktu produktif dari meja yang sesuai
