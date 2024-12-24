@@ -52,13 +52,13 @@ def save_bobot(bobot_kriteria):
 
 def konversi_ke_bobot(nilai, kategori):
     if kategori == "produktif":
-        if nilai <= 3:
+        if nilai <= 30:
             return 1
-        elif nilai <= 7:
+        elif nilai <= 60:
             return 2
-        elif nilai <= 11:
+        elif nilai <= 75:
             return 3
-        elif nilai <= 14:
+        elif nilai <= 89:
             return 4
         else:
             return 5
