@@ -1,4 +1,4 @@
-import datetime
+import datetime  # UpdateMinggu2Maret
 import json
 import os
 
@@ -19,6 +19,7 @@ collection_mhs = db["mahasiswa"]
 collection_hasil = db["hasil"]
 collection_tracking = db["tracking"]
 
+
 def load_bobot():
     try:
         bobot = collection_bobot.find_one({"_id": "bobot"})
@@ -38,12 +39,14 @@ def load_bobot():
             "nilai_proyek": 40,
         }
 
+
 def save_bobot(bobot):
     try:
         collection_bobot.replace_one({"_id": "bobot"}, bobot, upsert=True)
         # st.success("Bobot berhasil disimpan!")
     except Exception as e:
         st.error(f"Terjadi kesalahan saat menyimpan bobot: {e}")
+
 
 def konversi_ke_bobot(nilai, kategori):
     if kategori == "produktif":
@@ -81,6 +84,7 @@ def konversi_ke_bobot(nilai, kategori):
             return 5
     return 0
 
+
 # Fungsi untuk memuat data dari file berdasarkan tanggal
 def load_results(tanggal=None):
     if not tanggal:
@@ -106,6 +110,7 @@ def load_results(tanggal=None):
         st.warning(f"File {filename} tidak ditemukan.")
         return {}
 
+
 def load_mahasiswa():
     results = collection_mhs.find({})
     data = []
@@ -126,6 +131,7 @@ def save_mahasiswa(nim, nama, id_meja):
     except Exception as e:
         st.error(f"Terjadi kesalahan saat menyimpan data: {e}")
 
+
 def edit_mahasiswa(data, nim):
     try:
         collection_mhs.replace_one({"_id": nim}, data, upsert=True)
@@ -133,12 +139,14 @@ def edit_mahasiswa(data, nim):
     except Exception as e:
         st.error(f"Terjadi kesalahan saat menyimpan data: {e}")
 
+
 def delete_mahasiswa(nim):
     try:
         collection_mhs.delete_one({"_id": nim})
         st.success(f"Data mahasiswa {nim} berhasil dihapus!")
     except Exception as e:
         st.error(f"Terjadi kesalahan saat menghapus data: {e}")
+
 
 def save_data(data, role=None):
     if role is None:
@@ -213,7 +221,8 @@ def admin_page():
             options=[""] + [mhs["_id"] for mhs in daftar_mahasiswa],
             format_func=lambda x: (
                 f"{x} - {next((mhs['nama'] for mhs in daftar_mahasiswa if mhs['_id'] == x), '')}"
-                if x else "Pilih NIM"
+                if x
+                else "Pilih NIM"
             ),
         )
 
@@ -226,7 +235,9 @@ def admin_page():
         if nim:
             print(f"NIM yang dipilih: {nim}")
             # Ambil data mahasiswa dari daftar
-            mahasiswa_data = next((mhs for mhs in daftar_mahasiswa if mhs["_id"] == nim), None)
+            mahasiswa_data = next(
+                (mhs for mhs in daftar_mahasiswa if mhs["_id"] == nim), None
+            )
             print(f"Mahasiswa data: {mahasiswa_data}")
             if mahasiswa_data:
                 id_mahasiswa = mahasiswa_data["id"]
@@ -242,7 +253,9 @@ def admin_page():
             # Query data berdasarkan nama meja
             data_mahasiswa = collection_tracking.find_one(
                 {nama_meja: {"$exists": True}},
-                sort=[("_id", -1)],  # Sorting berdasarkan _id untuk mendapatkan data terakhir
+                sort=[
+                    ("_id", -1)
+                ],  # Sorting berdasarkan _id untuk mendapatkan data terakhir
             )
 
             if data_mahasiswa:
@@ -251,7 +264,7 @@ def admin_page():
 
                 # Cek apakah data sudah ada di MongoDB
                 existing_data = collection_hasil.find_one({"id": id_mahasiswa})
-                
+
                 if existing_data:
                     nilai_tugas = existing_data.get("nilai_tugas", "belum terisi")
                     nilai_proyek = existing_data.get("nilai_proyek", "belum terisi")
@@ -259,7 +272,7 @@ def admin_page():
                     # Siapkan data baru
                     nilai_tugas = "belum terisi"
                     nilai_proyek = "belum terisi"
-                    
+
                     # Insert data baru ke MongoDB
                     new_data = {
                         "id": id_mahasiswa,
@@ -267,11 +280,11 @@ def admin_page():
                         "nama": nama_mahasiswa,
                         "waktu_produktif": waktu_produktif,
                         "nilai_tugas": None,
-                        "nilai_proyek": None
+                        "nilai_proyek": None,
                     }
                     collection_hasil.insert_one(new_data)
 
-                # Tampilkan informasi mahasiswa  
+                # Tampilkan informasi mahasiswa
                 st.write(f"Waktu Produktif ({nama_meja}): {waktu_produktif} menit")
                 st.write(f"Nilai Tugas: {nilai_tugas}")
                 st.write(f"Nilai Proyek: {nilai_proyek}")
@@ -305,12 +318,10 @@ def admin_page():
                     "nilai_tugas": nilai_tugas,
                     "nilai_proyek": nilai_proyek,
                 }
-                
+
                 # Update atau insert ke MongoDB
                 collection_hasil.update_one(
-                    {"id": id_mahasiswa},
-                    {"$set": data_to_save},
-                    upsert=True
+                    {"id": id_mahasiswa}, {"$set": data_to_save}, upsert=True
                 )
                 st.success(f"Nilai untuk mahasiswa {nama_mahasiswa} berhasil disimpan!")
 
@@ -335,12 +346,12 @@ def admin_page():
                 # Skip document if it's the bobot document
                 if "_id" in result and result["_id"] == "bobot":
                     continue
-                    
+
                 data = {
                     "id": result.get("id"),
                     "waktu_produktif": result.get("waktu_produktif", 0),
                     "nilai_tugas": result.get("nilai_tugas", 0),
-                    "nilai_proyek": result.get("nilai_proyek", 0)
+                    "nilai_proyek": result.get("nilai_proyek", 0),
                 }
                 data_mahasiswa.append(data)
 
@@ -391,8 +402,7 @@ def admin_page():
             if st.button("Simpan Hasil"):
                 for hasil in hasil_saw:
                     collection_hasil.update_one(
-                        {"id": hasil["id"]},
-                        {"$set": {"hasil_saw": hasil["hasil_saw"]}}
+                        {"id": hasil["id"]}, {"$set": {"hasil_saw": hasil["hasil_saw"]}}
                     )
                 st.success("Hasil SPK berhasil disimpan ke MongoDB!")
 
@@ -401,14 +411,14 @@ def admin_page():
 
         # Get all unique dates from hasil collection
         unique_dates = collection_hasil.distinct("tanggal")
-        
+
         if not unique_dates:
             st.warning("Tidak ada data SPK yang tersedia.")
             return
 
         # Sort dates in descending order
         tanggal_list = sorted(unique_dates, reverse=True)
-        
+
         # Pilih tanggal untuk melihat hasil SPK yang sudah ada
         tanggal_pilih = st.selectbox("Pilih Tanggal", options=[""] + tanggal_list)
 
@@ -427,7 +437,9 @@ def admin_page():
 
                 if nim_pilih:
                     # Get student data from MongoDB
-                    mahasiswa = collection_hasil.find_one({"nim": nim_pilih, "tanggal": tanggal_pilih})
+                    mahasiswa = collection_hasil.find_one(
+                        {"nim": nim_pilih, "tanggal": tanggal_pilih}
+                    )
 
                     if mahasiswa:
                         st.subheader(
@@ -458,12 +470,16 @@ def admin_page():
                                 # Update document in MongoDB
                                 collection_hasil.update_one(
                                     {"nim": nim_pilih, "tanggal": tanggal_pilih},
-                                    {"$set": {
-                                        "nilai_tugas": nilai_tugas,
-                                        "nilai_proyek": nilai_proyek
-                                    }}
+                                    {
+                                        "$set": {
+                                            "nilai_tugas": nilai_tugas,
+                                            "nilai_proyek": nilai_proyek,
+                                        }
+                                    },
                                 )
-                                st.success(f"Perubahan berhasil disimpan untuk NIM {nim_pilih}!")
+                                st.success(
+                                    f"Perubahan berhasil disimpan untuk NIM {nim_pilih}!"
+                                )
                             except Exception as e:
                                 st.error(f"Gagal menyimpan perubahan: {str(e)}")
                     else:
@@ -500,11 +516,15 @@ def admin_page():
             st.subheader("Edit Mahasiswa")
             if daftar_mahasiswa:
                 nim_edit = st.selectbox(
-                    "Pilih NIM untuk diedit", options=[mhs["_id"] for mhs in daftar_mahasiswa]
+                    "Pilih NIM untuk diedit",
+                    options=[mhs["_id"] for mhs in daftar_mahasiswa],
                 )
 
                 if nim_edit:
-                    mahasiswa = next((mhs for mhs in daftar_mahasiswa if mhs["_id"] == nim_edit), None)
+                    mahasiswa = next(
+                        (mhs for mhs in daftar_mahasiswa if mhs["_id"] == nim_edit),
+                        None,
+                    )
                     if mahasiswa:
                         st.write(f"**NIM:** {nim_edit}")
 
@@ -528,12 +548,16 @@ def admin_page():
             st.subheader("Hapus Mahasiswa")
             if daftar_mahasiswa:
                 nim_hapus = st.selectbox(
-                    "Pilih NIM untuk dihapus", options=[mhs["_id"] for mhs in daftar_mahasiswa]
+                    "Pilih NIM untuk dihapus",
+                    options=[mhs["_id"] for mhs in daftar_mahasiswa],
                 )
 
                 if st.button("Hapus Mahasiswa"):
                     print(f"NIM yang dihapus: {nim_hapus}")
-                    mahasiswa_dihapus = next((mhs for mhs in daftar_mahasiswa if mhs["_id"] == nim_hapus), None)
+                    mahasiswa_dihapus = next(
+                        (mhs for mhs in daftar_mahasiswa if mhs["_id"] == nim_hapus),
+                        None,
+                    )
                     if mahasiswa_dihapus:
                         nama_dihapus = mahasiswa_dihapus["nama"]
                         print(f"Nama yang dihapus: {nama_dihapus}")
@@ -555,7 +579,6 @@ def admin_page():
             st.dataframe(df)
         else:
             st.info("Belum ada data mahasiswa.")
-
 
     elif menu == "Pengaturan":
         st.title("Pengaturan")
@@ -605,7 +628,6 @@ def admin_page():
 # Halaman utama
 def main():
     try:
-        
 
         st.set_page_config(
             page_title="Sistem Pengambilan Keputusan Mahasiswa", layout="wide"
@@ -663,7 +685,8 @@ def dosen_page():
             options=[""] + [mhs["_id"] for mhs in daftar_mahasiswa],
             format_func=lambda x: (
                 f"{x} - {next((mhs['nama'] for mhs in daftar_mahasiswa if mhs['_id'] == x), '')}"
-                if x else "Pilih NIM"
+                if x
+                else "Pilih NIM"
             ),
         )
 
@@ -676,7 +699,9 @@ def dosen_page():
         if nim:
             print(f"NIM yang dipilih: {nim}")
             # Ambil data mahasiswa dari daftar
-            mahasiswa_data = next((mhs for mhs in daftar_mahasiswa if mhs["_id"] == nim), None)
+            mahasiswa_data = next(
+                (mhs for mhs in daftar_mahasiswa if mhs["_id"] == nim), None
+            )
             print(f"Mahasiswa data: {mahasiswa_data}")
             if mahasiswa_data:
                 id_mahasiswa = mahasiswa_data["id"]
@@ -692,7 +717,9 @@ def dosen_page():
             # Query data berdasarkan nama meja
             data_mahasiswa = collection_tracking.find_one(
                 {nama_meja: {"$exists": True}},
-                sort=[("_id", -1)],  # Sorting berdasarkan _id untuk mendapatkan data terakhir
+                sort=[
+                    ("_id", -1)
+                ],  # Sorting berdasarkan _id untuk mendapatkan data terakhir
             )
 
             if data_mahasiswa:
@@ -701,7 +728,7 @@ def dosen_page():
 
                 # Cek apakah data sudah ada di MongoDB
                 existing_data = collection_hasil.find_one({"id": id_mahasiswa})
-                
+
                 if existing_data:
                     nilai_tugas = existing_data.get("nilai_tugas", "belum terisi")
                     nilai_proyek = existing_data.get("nilai_proyek", "belum terisi")
@@ -709,7 +736,7 @@ def dosen_page():
                     # Siapkan data baru
                     nilai_tugas = "belum terisi"
                     nilai_proyek = "belum terisi"
-                    
+
                     # Insert data baru ke MongoDB
                     new_data = {
                         "id": id_mahasiswa,
@@ -717,11 +744,11 @@ def dosen_page():
                         "nama": nama_mahasiswa,
                         "waktu_produktif": waktu_produktif,
                         "nilai_tugas": None,
-                        "nilai_proyek": None
+                        "nilai_proyek": None,
                     }
                     collection_hasil.insert_one(new_data)
 
-                # Tampilkan informasi mahasiswa  
+                # Tampilkan informasi mahasiswa
                 st.write(f"Waktu Produktif ({nama_meja}): {waktu_produktif} menit")
                 st.write(f"Nilai Tugas: {nilai_tugas}")
                 st.write(f"Nilai Proyek: {nilai_proyek}")
@@ -755,12 +782,10 @@ def dosen_page():
                     "nilai_tugas": nilai_tugas,
                     "nilai_proyek": nilai_proyek,
                 }
-                
+
                 # Update atau insert ke MongoDB
                 collection_hasil.update_one(
-                    {"id": id_mahasiswa},
-                    {"$set": data_to_save},
-                    upsert=True
+                    {"id": id_mahasiswa}, {"$set": data_to_save}, upsert=True
                 )
                 st.success(f"Nilai untuk mahasiswa {nama_mahasiswa} berhasil disimpan!")
 
@@ -785,12 +810,12 @@ def dosen_page():
                 # Skip document if it's the bobot document
                 if "_id" in result and result["_id"] == "bobot":
                     continue
-                    
+
                 data = {
                     "id": result.get("id"),
                     "waktu_produktif": result.get("waktu_produktif", 0),
                     "nilai_tugas": result.get("nilai_tugas", 0),
-                    "nilai_proyek": result.get("nilai_proyek", 0)
+                    "nilai_proyek": result.get("nilai_proyek", 0),
                 }
                 data_mahasiswa.append(data)
 
@@ -841,8 +866,7 @@ def dosen_page():
             if st.button("Simpan Hasil"):
                 for hasil in hasil_saw:
                     collection_hasil.update_one(
-                        {"id": hasil["id"]},
-                        {"$set": {"hasil_saw": hasil["hasil_saw"]}}
+                        {"id": hasil["id"]}, {"$set": {"hasil_saw": hasil["hasil_saw"]}}
                     )
                 st.success("Hasil SPK berhasil disimpan ke MongoDB!")
 
