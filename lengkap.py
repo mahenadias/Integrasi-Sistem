@@ -35,6 +35,16 @@ nama_mahasiswa = {
     "meja6": "Muhammad Fawwaz Fauzan",
 }
 
+# Nim Mahasiswa
+nim_mahasiswa = {
+    "meja1": "5312422015",
+    "meja2": "5312422042",
+    "meja3": "5312422016",
+    "meja4": "5312422031",
+    "meja5": "5312422033",
+    "meja6": "5312422032",
+}
+
 # Ambil data duduk dan tidur
 if data:
     data = data[0]
@@ -79,6 +89,7 @@ if data:
         hasil.append(
             {
                 "Nama": nama_mahasiswa[meja],
+                "NIM": nim_mahasiswa[meja],
                 "Duduk (waktu)": duduk_waktu,
                 "Tidur (waktu)": tidur_waktu,
                 "Skor Produktivitas": round(skor, 4),
