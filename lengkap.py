@@ -1,12 +1,10 @@
 import matplotlib.pyplot as plt
 import pandas as pd
+import streamlit as st
 from pymongo.mongo_client import MongoClient
 
-import streamlit as st
-
 # Koneksi ke MongoDB
-url = "mongodb+srv://adilarundaya:Capstone11@adil.rtt73.mongodb.net/?retryWrites=true&w=majority&appName=Adil"
-client = MongoClient(url)
+client = MongoClient(st.secrets["mongo"]["uri"])
 db = client["SPK"]
 collection_activity = db["tracking"]
 
